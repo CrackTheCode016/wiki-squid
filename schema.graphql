@@ -18,20 +18,9 @@ type Transfer @entity {
 
 type Auction @entity {
   id: ID!
-  index: Int! @index
   startBlock: Int! @index
-  startHash: String @index
-  endPeriodBlock: Int! @index
-  endPeriodHash: String!
+  endPeriodBlock: Int!
   biddingEndsBlock: Int
-  biddingEndsHash: String!
   onboardStartBlock: Int
-  onboardStartHash: String!
   onboardEndBlock: Int
-  onboardEndHash: String!
-  startDate: Int
-  endPeriodDate: Int
-  biddingEndsDate: Int
-  onboardStartDate: Int
-  onboardEndDate: Int
 }

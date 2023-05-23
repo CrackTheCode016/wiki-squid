@@ -1,6 +1,100 @@
 import assert from 'assert'
 import {Chain, ChainContext, EventContext, Event, Result, Option} from './support'
 
+export class AuctionsAuctionClosedEvent {
+    private readonly _chain: Chain
+    private readonly event: Event
+
+    constructor(ctx: EventContext)
+    constructor(ctx: ChainContext, event: Event)
+    constructor(ctx: EventContext, event?: Event) {
+        event = event || ctx.event
+        assert(event.name === 'Auctions.AuctionClosed')
+        this._chain = ctx._chain
+        this.event = event
+    }
+
+    /**
+     *  An auction ended. All funds become unreserved. [auction_index]
+     */
+    get isV9010(): boolean {
+        return this._chain.getEventHash('Auctions.AuctionClosed') === '0a0f30b1ade5af5fade6413c605719d59be71340cf4884f65ee9858eb1c38f6c'
+    }
+
+    /**
+     *  An auction ended. All funds become unreserved. [auction_index]
+     */
+    get asV9010(): number {
+        assert(this.isV9010)
+        return this._chain.decodeEvent(this.event)
+    }
+
+    /**
+     * An auction ended. All funds become unreserved.
+     */
+    get isV9230(): boolean {
+        return this._chain.getEventHash('Auctions.AuctionClosed') === 'b43a4f04c143465b1befbba20a53ad22053012b22824f10dc981cf180e36e10d'
+    }
+
+    /**
+     * An auction ended. All funds become unreserved.
+     */
+    get asV9230(): {auctionIndex: number} {
+        assert(this.isV9230)
+        return this._chain.decodeEvent(this.event)
+    }
+}
+
+export class AuctionsAuctionStartedEvent {
+    private readonly _chain: Chain
+    private readonly event: Event
+
+    constructor(ctx: EventContext)
+    constructor(ctx: ChainContext, event: Event)
+    constructor(ctx: EventContext, event?: Event) {
+        event = event || ctx.event
+        assert(event.name === 'Auctions.AuctionStarted')
+        this._chain = ctx._chain
+        this.event = event
+    }
+
+    /**
+     *  An auction started. Provides its index and the block number where it will begin to
+     *  close and the first lease period of the quadruplet that is auctioned.
+     *  [auction_index, lease_period, ending]
+     */
+    get isV9010(): boolean {
+        return this._chain.getEventHash('Auctions.AuctionStarted') === 'ee14df8652ec18f0202c95706dac25953673d4834fcfe21e7d7559cb96975c06'
+    }
+
+    /**
+     *  An auction started. Provides its index and the block number where it will begin to
+     *  close and the first lease period of the quadruplet that is auctioned.
+     *  [auction_index, lease_period, ending]
+     */
+    get asV9010(): [number, number, number] {
+        assert(this.isV9010)
+        return this._chain.decodeEvent(this.event)
+    }
+
+    /**
+     * An auction started. Provides its index and the block number where it will begin to
+     * close and the first lease period of the quadruplet that is auctioned.
+     */
+    get isV9230(): boolean {
+        return this._chain.getEventHash('Auctions.AuctionStarted') === '8b2d1722dc0088981b41be544b21195e4f399c63086aae153946e56fab444698'
+    }
+
+    /**
+     * An auction started. Provides its index and the block number where it will begin to
+     * close and the first lease period of the quadruplet that is auctioned.
+     */
+    get asV9230(): {auctionIndex: number, leasePeriod: number, ending: number} {
+        assert(this.isV9230)
+        return this._chain.decodeEvent(this.event)
+    }
+}
+
 export class BalancesTransferEvent {
     private readonly _chain: Chain
     private readonly event: Event

@@ -7,6 +7,7 @@
   "scripts": {
     "build": "rm -rf lib && tsc",
     "regen": "sqd typegen && sqd codegen && sqd build",
+    "regen:db": "sqd codegen && sqd build && sqd down && sqd migration:clean && sqd up && sqd migration:generate && sqd migration:apply",
     "update": "npx npm-check-updates --filter /subsquid/ --upgrade && npm i -f",
     "db:migrate": "npx squid-typeorm-migration apply",
     "processor:start": "node lib/processor.js",

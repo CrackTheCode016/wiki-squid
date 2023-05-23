@@ -4,7 +4,7 @@ import { BatchContext, BatchProcessorItem, SubstrateBatchProcessor } from "@subs
 import { Store, TypeormDatabase } from "@subsquid/typeorm-store"
 import { In } from "typeorm"
 import { Account, Auction, Transfer } from "./model"
-import { BalancesTransferEvent } from "./types/events"
+import { AuctionsAuctionStartedEvent, BalancesTransferEvent } from "./types/events"
 import { AuctionsAuctionInfoStorage } from "./types/storage"
 
 
@@ -27,6 +27,9 @@ const processor = new SubstrateBatchProcessor()
             }
         }
     } as const)
+    .addEvent('Auctions.AuctionStarted', { data: { event: true } })
+    .setBlockRange({ from: 7914237 })
+
 
 
 type Item = BatchProcessorItem<typeof processor>
@@ -83,16 +86,64 @@ interface TransferEvent {
     fee?: bigint
 }
 
+function daysToBlocks(days: number): number {
+    const blocks = (days / 6) * 86400;
+    return blocks;
+}
+
 async function getAuctions(ctx: Ctx): Promise<Auction[]> {
     let auctions: Auction[] = []
-    for (let { header: block } of ctx.blocks) {
-        let storage = new AuctionsAuctionInfoStorage({ block: { hash: block.hash }, _chain: ctx._chain });
-        if (storage.isV9010) {
-            // TODO: Get from various events and storage aspects, most likely just scanning historical events is easier!
-            // This is best for historical auctions. Unsure about current. 
-            let auctionInfo = await storage.asV9010.get();
-            if (auctionInfo != undefined) {
-                auctions.push(new Auction({ lease: auctionInfo[0], endingPeriod: auctionInfo[1] }));
+    for (let block of ctx.blocks) {
+        // consts.slots.leasePeriod
+        const PolkadotSlotLeasePeriod = 1209600;
+        const KusamaSlotLeasePeriod = 604800;
+
+        // consts.slots.leaseOffsets
+        const PolkadotSlotLeaseOffset = 921600;
+        const KusamaSlotLeaseOffset = 0;
+
+        // consts.auctions.leasePeriodsPerSlot
+        const PolkadotLeasePeriodPerSlot = 8;
+        const KusamaLeasePeriodPerSlot = 8;
+
+        // Auction starting phases (45 hours)
+        const PolkadotStartingPhase = 27000;
+        const KusamaStartingPhase = 27000;
+
+        // const.auctions.endingPeriod (5 days)
+        const PolkadotEndingPeriod = 72000;
+        const KusamaEndingPeriod = 72000;
+
+        // events
+        for (let item of block.items) {
+            // Ideally, it would be better to create a handler to handle these events
+            if (item.name == "Auctions.AuctionStarted") {
+                let event = new AuctionsAuctionStartedEvent(ctx, item.event);
+                if (event.isV9010) {
+                    const auctionIndex = event.asV9010[0];
+                    const auctionLeasePeriod = event.asV9010[1];
+                    const auctionEndBlock = event.asV9010[2];
+                    const biddingStarts = block.header.height + KusamaStartingPhase;
+
+                    // ONBOARDING INFO
+                    const onboardStartBlock = auctionLeasePeriod * KusamaSlotLeasePeriod + KusamaSlotLeaseOffset;
+                    const onboardEndBlock = onboardStartBlock + daysToBlocks(KusamaLeasePeriodPerSlot * 6 * 7);
+                    const biddingEndsBlock = biddingStarts + KusamaEndingPeriod;
+
+                    const auction = new Auction({
+                        id: auctionIndex.toString(),
+                        startBlock: block.header.height,
+                        onboardEndBlock,
+                        onboardStartBlock,
+                        biddingEndsBlock,
+                        endPeriodBlock: biddingStarts
+                    });
+
+                    console.log("FOUND AUCTION! ", auction);
+                    auctions.push(auction);
+
+                    // TODO: Get hashes?
+                }
             }
         }
     }
