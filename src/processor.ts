@@ -10,9 +10,6 @@ import { AuctionsAuctionInfoStorage } from "./types/storage"
 
 const processor = new SubstrateBatchProcessor()
     .setDataSource({
-        // Lookup archive by the network name in the Subsquid registry
-        //archive: lookupArchive("kusama", {release: "FireSquid"})
-
         // Use archive created by archive/docker-compose.yml
         archive: lookupArchive('kusama', { release: 'FireSquid' })
     })
