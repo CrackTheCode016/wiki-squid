@@ -16,11 +16,18 @@ type Transfer @entity {
   fee: BigInt! # fee is calculated at the best effort and may be zero for some old extrinsics
 }
 
+type Timestamp {
+  start: BigInt!
+  end: BigInt!
+}
+
 type Auction @entity {
   id: ID!
+  status: String!
   startBlock: Int! @index
   endPeriodBlock: Int!
   biddingEndsBlock: Int
   onboardStartBlock: Int
   onboardEndBlock: Int
+  timestamp: Timestamp
 }

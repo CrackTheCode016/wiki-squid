@@ -1,5 +1,5 @@
-module.exports = class Data1684876450718 {
-    name = 'Data1684876450718'
+module.exports = class Data1685141165933 {
+    name = 'Data1685141165933'
 
     async up(db) {
         await db.query(`CREATE TABLE "transfer" ("id" character varying NOT NULL, "block_number" integer NOT NULL, "timestamp" TIMESTAMP WITH TIME ZONE NOT NULL, "extrinsic_hash" text, "amount" numeric NOT NULL, "fee" numeric NOT NULL, "from_id" character varying, "to_id" character varying, CONSTRAINT "PK_fd9ddbdd49a17afcbe014401295" PRIMARY KEY ("id"))`)
@@ -10,7 +10,7 @@ module.exports = class Data1684876450718 {
         await db.query(`CREATE INDEX "IDX_0751309c66e97eac9ef1149362" ON "transfer" ("to_id") `)
         await db.query(`CREATE INDEX "IDX_f4007436c1b546ede08a4fd7ab" ON "transfer" ("amount") `)
         await db.query(`CREATE TABLE "account" ("id" character varying NOT NULL, CONSTRAINT "PK_54115ee388cdb6d86bb4bf5b2ea" PRIMARY KEY ("id"))`)
-        await db.query(`CREATE TABLE "auction" ("id" character varying NOT NULL, "start_block" integer NOT NULL, "end_period_block" integer NOT NULL, "bidding_ends_block" integer, "onboard_start_block" integer, "onboard_end_block" integer, CONSTRAINT "PK_9dc876c629273e71646cf6dfa67" PRIMARY KEY ("id"))`)
+        await db.query(`CREATE TABLE "auction" ("id" character varying NOT NULL, "status" text NOT NULL, "start_block" integer NOT NULL, "end_period_block" integer NOT NULL, "bidding_ends_block" integer, "onboard_start_block" integer, "onboard_end_block" integer, "timestamp" jsonb, CONSTRAINT "PK_9dc876c629273e71646cf6dfa67" PRIMARY KEY ("id"))`)
         await db.query(`CREATE INDEX "IDX_ea03ee23599e795235d2ff6886" ON "auction" ("start_block") `)
         await db.query(`ALTER TABLE "transfer" ADD CONSTRAINT "FK_76bdfed1a7eb27c6d8ecbb73496" FOREIGN KEY ("from_id") REFERENCES "account"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`)
         await db.query(`ALTER TABLE "transfer" ADD CONSTRAINT "FK_0751309c66e97eac9ef11493623" FOREIGN KEY ("to_id") REFERENCES "account"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`)

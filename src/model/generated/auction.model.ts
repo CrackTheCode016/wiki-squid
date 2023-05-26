@@ -1,4 +1,6 @@
 import {Entity as Entity_, Column as Column_, PrimaryColumn as PrimaryColumn_, Index as Index_} from "typeorm"
+import * as marshal from "./marshal"
+import {Timestamp} from "./_timestamp"
 
 @Entity_()
 export class Auction {
@@ -8,6 +10,9 @@ export class Auction {
 
     @PrimaryColumn_()
     id!: string
+
+    @Column_("text", {nullable: false})
+    status!: string
 
     @Index_()
     @Column_("int4", {nullable: false})
@@ -24,4 +29,7 @@ export class Auction {
 
     @Column_("int4", {nullable: true})
     onboardEndBlock!: number | undefined | null
+
+    @Column_("jsonb", {transformer: {to: obj => obj == null ? undefined : obj.toJSON(), from: obj => obj == null ? undefined : new Timestamp(undefined, obj)}, nullable: true})
+    timestamp!: Timestamp | undefined | null
 }

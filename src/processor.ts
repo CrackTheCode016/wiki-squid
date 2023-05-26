@@ -3,8 +3,8 @@ import * as ss58 from "@subsquid/ss58"
 import { BatchContext, BatchProcessorItem, SubstrateBatchProcessor } from "@subsquid/substrate-processor"
 import { Store, TypeormDatabase } from "@subsquid/typeorm-store"
 import { In } from "typeorm"
-import { Account, Auction, Transfer } from "./model"
-import { AuctionsAuctionStartedEvent, BalancesTransferEvent } from "./types/events"
+import { Account, Auction, Timestamp, Transfer } from "./model"
+import { AuctionsAuctionClosedEvent, AuctionsAuctionStartedEvent, BalancesTransferEvent } from "./types/events"
 import { AuctionsAuctionInfoStorage } from "./types/storage"
 
 
@@ -28,6 +28,7 @@ const processor = new SubstrateBatchProcessor()
         }
     } as const)
     .addEvent('Auctions.AuctionStarted', { data: { event: true } })
+    .addEvent('Auctions.AuctionClosed', { data: { event: true } })
     .setBlockRange({ from: 7914237 })
 
 
@@ -37,62 +38,20 @@ type Ctx = BatchContext<Store, Item>
 
 
 processor.run(new TypeormDatabase(), async ctx => {
-    let transfersData = getTransfers(ctx)
-    let auctions = await getAuctions(ctx)
 
-    let accountIds = new Set<string>()
-    for (let t of transfersData) {
-        accountIds.add(t.from)
-        accountIds.add(t.to)
-    }
+    // AUCTIONS
+    let availableAuctions = await ctx.store.findBy(Auction, {});
+    let auctions = await getAuctions(ctx, availableAuctions);
 
-    let accounts = await ctx.store.findBy(Account, { id: In([...accountIds]) }).then(accounts => {
-        return new Map(accounts.map(a => [a.id, a]))
-    })
-
-    let transfers: Transfer[] = []
-
-    for (let t of transfersData) {
-        let { id, blockNumber, timestamp, extrinsicHash, amount, fee } = t
-
-        let from = getAccount(accounts, t.from)
-        let to = getAccount(accounts, t.to)
-
-        transfers.push(new Transfer({
-            id,
-            blockNumber,
-            timestamp,
-            extrinsicHash,
-            from,
-            to,
-            amount,
-            fee
-        }))
-    }
-    await ctx.store.save(Array.from(accounts.values()))
-    await ctx.store.insert(transfers)
-    await ctx.store.insert(auctions)
+    await ctx.store.upsert(auctions)
 })
-
-
-interface TransferEvent {
-    id: string
-    blockNumber: number
-    timestamp: Date
-    extrinsicHash?: string
-    from: string
-    to: string
-    amount: bigint
-    fee?: bigint
-}
 
 function daysToBlocks(days: number): number {
     const blocks = (days / 6) * 86400;
     return blocks;
 }
 
-async function getAuctions(ctx: Ctx): Promise<Auction[]> {
-    let auctions: Auction[] = []
+async function getAuctions(ctx: Ctx, auctions: Auction[]): Promise<Auction[]> {
     for (let block of ctx.blocks) {
         // consts.slots.leasePeriod
         const PolkadotSlotLeasePeriod = 1209600;
@@ -113,16 +72,15 @@ async function getAuctions(ctx: Ctx): Promise<Auction[]> {
         // const.auctions.endingPeriod (5 days)
         const PolkadotEndingPeriod = 72000;
         const KusamaEndingPeriod = 72000;
-
         // events
         for (let item of block.items) {
-            // Ideally, it would be better to create a handler to handle these events
             if (item.name == "Auctions.AuctionStarted") {
                 let event = new AuctionsAuctionStartedEvent(ctx, item.event);
                 if (event.isV9010) {
                     const auctionIndex = event.asV9010[0];
                     const auctionLeasePeriod = event.asV9010[1];
                     const auctionEndBlock = event.asV9010[2];
+                    console.log(auctionEndBlock)
                     const biddingStarts = block.header.height + KusamaStartingPhase;
 
                     // ONBOARDING INFO
@@ -130,68 +88,32 @@ async function getAuctions(ctx: Ctx): Promise<Auction[]> {
                     const onboardEndBlock = onboardStartBlock + daysToBlocks(KusamaLeasePeriodPerSlot * 6 * 7);
                     const biddingEndsBlock = biddingStarts + KusamaEndingPeriod;
 
+                    // 0 implicates no end for now
+                    const timestamp = new Timestamp({ start: BigInt(block.header.timestamp), end: BigInt(0) });
                     const auction = new Auction({
                         id: auctionIndex.toString(),
                         startBlock: block.header.height,
+                        status: 'Ongoing',
                         onboardEndBlock,
                         onboardStartBlock,
                         biddingEndsBlock,
+                        timestamp,
                         endPeriodBlock: biddingStarts
                     });
-
-                    console.log("FOUND AUCTION! ", auction);
                     auctions.push(auction);
-
-                    // TODO: Get hashes?
+                }
+            } else if (item.name == "Auctions.AuctionClosed") {
+                let event = new AuctionsAuctionClosedEvent(ctx, item.event);
+                if (event.isV9010) {
+                    const auctionIndex = event.asV9010;
+                    const auction = auctions.find(a => a.id == auctionIndex.toString())!;
+                    auction.status = "Completed";
+                    auction.timestamp!.end = BigInt(block.header.timestamp);
+                    console.log(auction, block.header.height);
+                    auctions = auctions.map(a => a.id == auctionIndex.toString() ? auction : a);
                 }
             }
         }
     }
     return auctions;
-}
-
-function getTransfers(ctx: Ctx): TransferEvent[] {
-    let transfers: TransferEvent[] = []
-    for (let block of ctx.blocks) {
-        for (let item of block.items) {
-            if (item.name == "Balances.Transfer") {
-                let e = new BalancesTransferEvent(ctx, item.event)
-                let rec: { from: Uint8Array, to: Uint8Array, amount: bigint }
-                if (e.isV1020) {
-                    let [from, to, amount] = e.asV1020
-                    rec = { from, to, amount }
-                } else if (e.isV1050) {
-                    let [from, to, amount] = e.asV1050
-                    rec = { from, to, amount }
-                } else if (e.isV9130) {
-                    rec = e.asV9130
-                } else {
-                    throw new Error('Unsupported spec')
-                }
-
-                transfers.push({
-                    id: item.event.id,
-                    blockNumber: block.header.height,
-                    timestamp: new Date(block.header.timestamp),
-                    extrinsicHash: item.event.extrinsic?.hash,
-                    from: ss58.codec('kusama').encode(rec.from),
-                    to: ss58.codec('kusama').encode(rec.to),
-                    amount: rec.amount,
-                    fee: item.event.extrinsic?.fee || 0n
-                })
-            }
-        }
-    }
-    return transfers
-}
-
-
-function getAccount(m: Map<string, Account>, id: string): Account {
-    let acc = m.get(id)
-    if (acc == null) {
-        acc = new Account()
-        acc.id = id
-        m.set(id, acc)
-    }
-    return acc
 }
