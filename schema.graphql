@@ -22,12 +22,20 @@ type Timestamp {
 }
 
 type Auction @entity {
-  id: ID!
+  id: ID! @index
   status: String!
-  startBlock: Int! @index
-  endPeriodBlock: Int!
-  biddingEndsBlock: Int
-  onboardStartBlock: Int
-  onboardEndBlock: Int
+  startBlock: BlockInfo!
+  endPeriodBlock: BlockInfo!
+  biddingStartBlock: BlockInfo!
+  biddingEndsBlock: BlockInfo!
+  onboardStartBlock: BlockInfo!
+  onboardEndBlock: BlockInfo!
   timestamp: Timestamp
+}
+
+type BlockInfo {
+  id: ID!
+  hash: String!
+  height: Int! 
+  timestamp: BigInt!
 }

@@ -1,5 +1,6 @@
-import {Entity as Entity_, Column as Column_, PrimaryColumn as PrimaryColumn_, Index as Index_} from "typeorm"
+import {Entity as Entity_, Column as Column_, PrimaryColumn as PrimaryColumn_} from "typeorm"
 import * as marshal from "./marshal"
+import {BlockInfo} from "./_blockInfo"
 import {Timestamp} from "./_timestamp"
 
 @Entity_()
@@ -14,21 +15,23 @@ export class Auction {
     @Column_("text", {nullable: false})
     status!: string
 
-    @Index_()
-    @Column_("int4", {nullable: false})
-    startBlock!: number
+    @Column_("jsonb", {transformer: {to: obj => obj.toJSON(), from: obj => obj == null ? undefined : new BlockInfo(undefined, obj)}, nullable: false})
+    startBlock!: BlockInfo
 
-    @Column_("int4", {nullable: false})
-    endPeriodBlock!: number
+    @Column_("jsonb", {transformer: {to: obj => obj.toJSON(), from: obj => obj == null ? undefined : new BlockInfo(undefined, obj)}, nullable: false})
+    endPeriodBlock!: BlockInfo
 
-    @Column_("int4", {nullable: true})
-    biddingEndsBlock!: number | undefined | null
+    @Column_("jsonb", {transformer: {to: obj => obj.toJSON(), from: obj => obj == null ? undefined : new BlockInfo(undefined, obj)}, nullable: false})
+    biddingStartBlock!: BlockInfo
 
-    @Column_("int4", {nullable: true})
-    onboardStartBlock!: number | undefined | null
+    @Column_("jsonb", {transformer: {to: obj => obj.toJSON(), from: obj => obj == null ? undefined : new BlockInfo(undefined, obj)}, nullable: false})
+    biddingEndsBlock!: BlockInfo
 
-    @Column_("int4", {nullable: true})
-    onboardEndBlock!: number | undefined | null
+    @Column_("jsonb", {transformer: {to: obj => obj.toJSON(), from: obj => obj == null ? undefined : new BlockInfo(undefined, obj)}, nullable: false})
+    onboardStartBlock!: BlockInfo
+
+    @Column_("jsonb", {transformer: {to: obj => obj.toJSON(), from: obj => obj == null ? undefined : new BlockInfo(undefined, obj)}, nullable: false})
+    onboardEndBlock!: BlockInfo
 
     @Column_("jsonb", {transformer: {to: obj => obj == null ? undefined : obj.toJSON(), from: obj => obj == null ? undefined : new Timestamp(undefined, obj)}, nullable: true})
     timestamp!: Timestamp | undefined | null
