@@ -60,7 +60,6 @@ processor.run(new TypeormDatabase(), async ctx => {
     let auctions = await getAuctions(ctx, availableAuctions, blockInfo)
 
     await ctx.store.save(auctions)
-    // await ctx.store.insert(blockInfo)
 })
 
 function daysToBlocks(days: number): number {
