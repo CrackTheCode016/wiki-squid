@@ -1,11 +1,8 @@
-import { lookupArchive } from "@subsquid/archive-registry"
-import * as ss58 from "@subsquid/ss58"
+import { KnownArchivesSubstrate, lookupArchive } from "@subsquid/archive-registry"
 import { BatchContext, BatchProcessorItem, SubstrateBatchProcessor } from "@subsquid/substrate-processor"
 import { Store, TypeormDatabase } from "@subsquid/typeorm-store"
-import { In } from "typeorm"
-import { Account, Auction, BlockInfo, Timestamp, Transfer } from "./model"
+import { Auction, BlockInfo, Timestamp } from "./model"
 import { AuctionsAuctionClosedEvent, AuctionsAuctionStartedEvent, BalancesTransferEvent } from "./types/events"
-import { AuctionsAuctionInfoStorage } from "./types/storage"
 
 // consts.slots.leasePeriod
 const PolkadotSlotLeasePeriod = 1209600;
@@ -27,10 +24,13 @@ const KusamaStartingPhase = 27000;
 const PolkadotEndingPeriod = 72000;
 const KusamaEndingPeriod = 72000;
 
+// Gets the network (NETWORK) type from .env file
+const getNetwork = (): KnownArchivesSubstrate => process.env.NETWORK! as KnownArchivesSubstrate;
+
 const processor = new SubstrateBatchProcessor()
     .setDataSource({
         // Use archive created by archive/docker-compose.yml
-        archive: lookupArchive('kusama', { release: 'FireSquid' })
+        archive: lookupArchive(getNetwork(), { release: 'FireSquid' })
     })
     .addEvent('Balances.Transfer', {
         data: {
@@ -46,8 +46,6 @@ const processor = new SubstrateBatchProcessor()
     .addEvent('Auctions.AuctionStarted', { data: { event: true } })
     .addEvent('Auctions.AuctionClosed', { data: { event: true } })
     .setBlockRange({ from: 7914237 })
-
-
 
 type Item = BatchProcessorItem<typeof processor>
 type Ctx = BatchContext<Store, Item>
