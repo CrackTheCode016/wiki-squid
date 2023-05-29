@@ -4,25 +4,30 @@ import { Store, TypeormDatabase } from "@subsquid/typeorm-store"
 import { Auction, BlockInfo, Timestamp } from "./model"
 import { AuctionsAuctionClosedEvent, AuctionsAuctionStartedEvent, BalancesTransferEvent } from "./types/events"
 
-// consts.slots.leasePeriod
-const PolkadotSlotLeasePeriod = 1209600;
-const KusamaSlotLeasePeriod = 604800;
+interface AuctionOptions {
+    SlotLeasePeriod: number;
+    SlotLeaseOffset: number;
+    LeasePeriodPerSlot: number;
+    StartingPhase: number;
+    EndingPeriod: number;
+}
 
-// consts.slots.leaseOffsets
-const PolkadotSlotLeaseOffset = 921600;
-const KusamaSlotLeaseOffset = 0;
+// Auction variables for Polkadot and Kusama
+const polkadotAuctionOptions: AuctionOptions = {
+    SlotLeasePeriod: 1209600,
+    SlotLeaseOffset: 921600,
+    LeasePeriodPerSlot: 8,
+    StartingPhase: 27000,
+    EndingPeriod: 72000
+}
 
-// consts.auctions.leasePeriodsPerSlot
-const PolkadotLeasePeriodPerSlot = 8;
-const KusamaLeasePeriodPerSlot = 8;
-
-// Auction starting phases (45 hours)
-const PolkadotStartingPhase = 27000;
-const KusamaStartingPhase = 27000;
-
-// const.auctions.endingPeriod (5 days)
-const PolkadotEndingPeriod = 72000;
-const KusamaEndingPeriod = 72000;
+const kusamaAuctionOptions: AuctionOptions = {
+    SlotLeasePeriod: 604800,
+    SlotLeaseOffset: 0,
+    LeasePeriodPerSlot: 8,
+    StartingPhase: 27000,
+    EndingPeriod: 72000
+}
 
 // Gets the network (NETWORK) type from .env file
 const getNetwork = (): KnownArchivesSubstrate => process.env.NETWORK! as KnownArchivesSubstrate;
@@ -88,6 +93,8 @@ function predictBlockInfoData(blockHeight: number, currentTime: number, currentB
 
 async function getAuctions(ctx: Ctx, auctions: Auction[], blockInfo: BlockInfo[]): Promise<Auction[]> {
 
+    let options: AuctionOptions = getNetwork() == "polkadot" ? polkadotAuctionOptions : kusamaAuctionOptions;
+
     for (let block of ctx.blocks) {
         // events
         for (let item of block.items) {
@@ -97,15 +104,14 @@ async function getAuctions(ctx: Ctx, auctions: Auction[], blockInfo: BlockInfo[]
                     // GENERAL INFO (from event)
                     const auctionIndex = event.asV9010[0];
                     const auctionLeasePeriod = event.asV9010[1];
-                    const auctionEndBlock = event.asV9010[2];
 
                     // BIDDING INFO
-                    const biddingStarts = block.header.height + KusamaStartingPhase;
-                    const biddingEndsBlock = biddingStarts + KusamaEndingPeriod;
+                    const biddingStarts = block.header.height + options.StartingPhase;
+                    const biddingEndsBlock = biddingStarts + options.EndingPeriod;
 
                     // ONBOARDING INFO
-                    const onboardStartBlock = auctionLeasePeriod * KusamaSlotLeasePeriod + KusamaSlotLeaseOffset;
-                    const onboardEndBlock = onboardStartBlock + daysToBlocks(KusamaLeasePeriodPerSlot * 6 * 7);
+                    const onboardStartBlock = auctionLeasePeriod * options.SlotLeasePeriod + options.SlotLeaseOffset;
+                    const onboardEndBlock = onboardStartBlock + daysToBlocks(options.LeasePeriodPerSlot * 6 * 7);
 
 
                     const startBlock = blockInfo.find(b => b.height === block.header.height)!;
