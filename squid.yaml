@@ -1,12 +1,15 @@
 manifestVersion: subsquid.io/v0.1
 name: wiki-squid
-version: 1
+version: 2
 description: 'The very first squid from manifest  '
 build: 
 deploy:
   addons:
     postgres: 
   processor:
+    env:
+      STARTING_HEIGHT: 7913931
+      NETWORK: kusama
     cmd:
       - node
       - lib/processor
