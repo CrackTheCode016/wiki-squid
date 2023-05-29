@@ -10,6 +10,7 @@ interface AuctionOptions {
     LeasePeriodPerSlot: number;
     StartingPhase: number;
     EndingPeriod: number;
+    WeeksPerPeriod: number;
 }
 
 // Auction variables for Polkadot and Kusama
@@ -17,14 +18,16 @@ const polkadotAuctionOptions: AuctionOptions = {
     SlotLeasePeriod: 1209600,
     SlotLeaseOffset: 921600,
     LeasePeriodPerSlot: 8,
+    WeeksPerPeriod: 12,
     StartingPhase: 27000,
     EndingPeriod: 72000
 }
 
 const kusamaAuctionOptions: AuctionOptions = {
     SlotLeasePeriod: 604800,
-    SlotLeaseOffset: 0,
+    SlotLeaseOffset: 72000,
     LeasePeriodPerSlot: 8,
+    WeeksPerPeriod: 6,
     StartingPhase: 27000,
     EndingPeriod: 72000
 }
@@ -50,7 +53,10 @@ const processor = new SubstrateBatchProcessor()
     } as const)
     .addEvent('Auctions.AuctionStarted', { data: { event: true } })
     .addEvent('Auctions.AuctionClosed', { data: { event: true } })
-    .setBlockRange({ from: 7914237 })
+    .setBlockRange({
+        from:
+            7913931
+    })
 
 type Item = BatchProcessorItem<typeof processor>
 type Ctx = BatchContext<Store, Item>
@@ -94,10 +100,11 @@ function predictBlockInfoData(blockHeight: number, currentTime: number, currentB
 async function getAuctions(ctx: Ctx, auctions: Auction[], blockInfo: BlockInfo[]): Promise<Auction[]> {
 
     let options: AuctionOptions = getNetwork() == "polkadot" ? polkadotAuctionOptions : kusamaAuctionOptions;
-
+    // Blocks
     for (let block of ctx.blocks) {
-        // events
+        // Events
         for (let item of block.items) {
+            // Check if some auction has started
             if (item.name == "Auctions.AuctionStarted") {
                 let event = new AuctionsAuctionStartedEvent(ctx, item.event);
                 if (event.isV9010) {
@@ -105,21 +112,29 @@ async function getAuctions(ctx: Ctx, auctions: Auction[], blockInfo: BlockInfo[]
                     const auctionIndex = event.asV9010[0];
                     const auctionLeasePeriod = event.asV9010[1];
 
-                    // BIDDING INFO
+                    console.log(event.asV9010)
+
+                    // BIDDING INFO - defines the start and ending of the bidding phase
                     const biddingStarts = block.header.height + options.StartingPhase;
                     const biddingEndsBlock = biddingStarts + options.EndingPeriod;
 
-                    // ONBOARDING INFO
+                    // ONBOARDING INFO - defines the lease start and end
+                    // Take the lease period from the event, and convert to blocks (SlotLeasePeriod = the amount of blocks per period).
+                    // Add an offset to mitigate any inaccuracies when converting
+
                     const onboardStartBlock = auctionLeasePeriod * options.SlotLeasePeriod + options.SlotLeaseOffset;
-                    const onboardEndBlock = onboardStartBlock + daysToBlocks(options.LeasePeriodPerSlot * 6 * 7);
-
-
+                    // Convert to weeks (periods per slot * the weeks per period, chain dependent) -> convert to days -> convert to blocks
+                    const onboardEndBlock = onboardStartBlock + daysToBlocks((options.LeasePeriodPerSlot * options.WeeksPerPeriod) * 7);
                     const startBlock = blockInfo.find(b => b.height === block.header.height)!;
 
+                    // Convert to BlockInfo, giving us unix timestamps and block heights
                     const biddingStartsInfo = predictBlockInfoData(biddingStarts, block.header.timestamp, block.header.height);
                     const onboardStartBlockInfo = predictBlockInfoData(onboardStartBlock, block.header.timestamp, block.header.height);
                     const onboardEndBlockInfo = predictBlockInfoData(onboardEndBlock, block.header.timestamp, block.header.height);
                     const biddingEndsBlockInfo = predictBlockInfoData(biddingEndsBlock, block.header.timestamp, block.header.height);
+
+                    console.log(new Date(parseInt(onboardStartBlockInfo.timestamp.toString())).toDateString());
+                    console.log(new Date(parseInt(onboardEndBlockInfo.timestamp.toString())).toDateString());
 
                     const timestamp = new Timestamp({ start: BigInt(block.header.timestamp), end: BigInt(0) });
                     const auction = new Auction({
