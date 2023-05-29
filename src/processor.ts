@@ -76,6 +76,9 @@ function daysToBlocks(days: number): number {
     return blocks;
 }
 
+/** 
+ * Parses out blocks into a more digestable format
+*/
 async function saveBlockInfo(ctx: Ctx): Promise<BlockInfo[]> {
     return ctx.blocks.map(({ header }) => new BlockInfo({
         id: header.height.toString(),
@@ -85,7 +88,9 @@ async function saveBlockInfo(ctx: Ctx): Promise<BlockInfo[]> {
     }))
 }
 
-// Returns block info for a specific block height in the future.
+/** 
+ * Returns block info for a specific block height in the future.
+*/
 function predictBlockInfoData(blockHeight: number, currentTime: number, currentBlockHeight: number): BlockInfo {
     const milliseconds = ((blockHeight - currentBlockHeight) * 6) * 1000;
     const predictedTime = currentTime + milliseconds;
@@ -97,8 +102,12 @@ function predictBlockInfoData(blockHeight: number, currentTime: number, currentB
     })
 }
 
+/** 
+ *  Filters out auctions every chunk of blocks.
+ *  If an auction has started, it is included as "Ongoing".
+ *  If an auction has been stated as closed, then it is concluded as "Complete" and the timestamp is complete.
+ * */ 
 async function getAuctions(ctx: Ctx, auctions: Auction[], blockInfo: BlockInfo[]): Promise<Auction[]> {
-
     let options: AuctionOptions = getNetwork() == "polkadot" ? polkadotAuctionOptions : kusamaAuctionOptions;
     // Blocks
     for (let block of ctx.blocks) {
