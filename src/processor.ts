@@ -34,6 +34,7 @@ const kusamaAuctionOptions: AuctionOptions = {
 
 // Gets the network (NETWORK) type from .env file
 const getNetwork = (): KnownArchivesSubstrate => process.env.NETWORK! as KnownArchivesSubstrate;
+const getStartingHeight = (): number => parseInt(process.env.STARTING_HEIGHT!);
 
 const processor = new SubstrateBatchProcessor()
     .setDataSource({
@@ -54,8 +55,7 @@ const processor = new SubstrateBatchProcessor()
     .addEvent('Auctions.AuctionStarted', { data: { event: true } })
     .addEvent('Auctions.AuctionClosed', { data: { event: true } })
     .setBlockRange({
-        from:
-            7913931
+        from: getStartingHeight()
     })
 
 type Item = BatchProcessorItem<typeof processor>
@@ -106,7 +106,7 @@ function predictBlockInfoData(blockHeight: number, currentTime: number, currentB
  *  Filters out auctions every chunk of blocks.
  *  If an auction has started, it is included as "Ongoing".
  *  If an auction has been stated as closed, then it is concluded as "Complete" and the timestamp is complete.
- * */ 
+ * */
 async function getAuctions(ctx: Ctx, auctions: Auction[], blockInfo: BlockInfo[]): Promise<Auction[]> {
     let options: AuctionOptions = getNetwork() == "polkadot" ? polkadotAuctionOptions : kusamaAuctionOptions;
     // Blocks
