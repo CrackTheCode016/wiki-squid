@@ -1,6 +1,6 @@
 manifestVersion: subsquid.io/v0.1
 name: wiki-squid
-version: 2
+version: 3
 description: 'The very first squid from manifest  '
 build: 
 deploy:

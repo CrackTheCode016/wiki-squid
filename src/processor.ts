@@ -116,12 +116,12 @@ async function getAuctions(ctx: Ctx, auctions: Auction[], blockInfo: BlockInfo[]
             // Check if some auction has started
             if (item.name == "Auctions.AuctionStarted") {
                 let event = new AuctionsAuctionStartedEvent(ctx, item.event);
-                if (event.isV9010) {
+                console.log(event.isV9010, event.isV9230)
+                if (event.isV9010 || event.isV9230) {
                     // GENERAL INFO (from event)
-                    const auctionIndex = event.asV9010[0];
-                    const auctionLeasePeriod = event.asV9010[1];
 
-                    console.log(event.asV9010)
+                    const auctionIndex = event.isV9010 == true ? event.asV9010[0] : event.asV9230.auctionIndex;
+                    const auctionLeasePeriod = event.isV9010 == true ? event.asV9010[1] : event.asV9230.leasePeriod;
 
                     // BIDDING INFO - defines the start and ending of the bidding phase
                     const biddingStarts = block.header.height + options.StartingPhase;
@@ -141,9 +141,6 @@ async function getAuctions(ctx: Ctx, auctions: Auction[], blockInfo: BlockInfo[]
                     const onboardStartBlockInfo = predictBlockInfoData(onboardStartBlock, block.header.timestamp, block.header.height);
                     const onboardEndBlockInfo = predictBlockInfoData(onboardEndBlock, block.header.timestamp, block.header.height);
                     const biddingEndsBlockInfo = predictBlockInfoData(biddingEndsBlock, block.header.timestamp, block.header.height);
-
-                    console.log(new Date(parseInt(onboardStartBlockInfo.timestamp.toString())).toDateString());
-                    console.log(new Date(parseInt(onboardEndBlockInfo.timestamp.toString())).toDateString());
 
                     const timestamp = new Timestamp({ start: BigInt(block.header.timestamp), end: BigInt(0) });
                     const auction = new Auction({
