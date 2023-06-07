@@ -1,6 +1,6 @@
 manifestVersion: subsquid.io/v0.1
-name: kusama-wiki-squid
-version: 4
+name: kusama-guide-squid
+version: 1
 description: 'The very first squid from manifest  '
 build: 
 deploy:
