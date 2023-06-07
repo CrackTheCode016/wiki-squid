@@ -25,7 +25,7 @@ const polkadotAuctionOptions: AuctionOptions = {
 
 const kusamaAuctionOptions: AuctionOptions = {
     SlotLeasePeriod: 604800,
-    SlotLeaseOffset: 72000,
+    SlotLeaseOffset: 0,
     LeasePeriodPerSlot: 8,
     WeeksPerPeriod: 6,
     StartingPhase: 27000,
@@ -116,10 +116,8 @@ async function getAuctions(ctx: Ctx, auctions: Auction[], blockInfo: BlockInfo[]
             // Check if some auction has started
             if (item.name == "Auctions.AuctionStarted") {
                 let event = new AuctionsAuctionStartedEvent(ctx, item.event);
-                console.log(event.isV9010, event.isV9230)
                 if (event.isV9010 || event.isV9230) {
                     // GENERAL INFO (from event)
-
                     const auctionIndex = event.isV9010 == true ? event.asV9010[0] : event.asV9230.auctionIndex;
                     const auctionLeasePeriod = event.isV9010 == true ? event.asV9010[1] : event.asV9230.leasePeriod;
 
@@ -160,8 +158,8 @@ async function getAuctions(ctx: Ctx, auctions: Auction[], blockInfo: BlockInfo[]
 
             if (item.name == "Auctions.AuctionClosed") {
                 let event = new AuctionsAuctionClosedEvent(ctx, item.event);
-                if (event.isV9010) {
-                    const auctionIndex = event.asV9010;
+                if (event.isV9010 || event.isV9230) {
+                    const auctionIndex = event.isV9010 ? event.asV9010 : event.asV9230.auctionIndex;
                     const auction = auctions.find(a => a.id == auctionIndex.toString())!;
                     auction.status = "Completed";
                     auction.timestamp!.end = BigInt(block.header.timestamp);
