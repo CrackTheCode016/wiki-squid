@@ -116,10 +116,10 @@ async function getAuctions(ctx: Ctx, auctions: Auction[], blockInfo: BlockInfo[]
             // Check if some auction has started
             if (item.name == "Auctions.AuctionStarted") {
                 let event = new AuctionsAuctionStartedEvent(ctx, item.event);
-                if (event.isV9010 || event.isV9230) {
+                if (event.isV9110 || event.isV9230) {
                     // GENERAL INFO (from event)
-                    const auctionIndex = event.isV9010 == true ? event.asV9010[0] : event.asV9230.auctionIndex;
-                    const auctionLeasePeriod = event.isV9010 == true ? event.asV9010[1] : event.asV9230.leasePeriod;
+                    const auctionIndex = event.isV9110 == true ? event.asV9110[0] : event.asV9230.auctionIndex;
+                    const auctionLeasePeriod = event.isV9110 == true ? event.asV9110[1] : event.asV9230.leasePeriod;
 
                     // BIDDING INFO - defines the start and ending of the bidding phase
                     const biddingStarts = block.header.height + options.StartingPhase;
@@ -158,8 +158,8 @@ async function getAuctions(ctx: Ctx, auctions: Auction[], blockInfo: BlockInfo[]
 
             if (item.name == "Auctions.AuctionClosed") {
                 let event = new AuctionsAuctionClosedEvent(ctx, item.event);
-                if (event.isV9010 || event.isV9230) {
-                    const auctionIndex = event.isV9010 ? event.asV9010 : event.asV9230.auctionIndex;
+                if (event.isV9110 || event.isV9230) {
+                    const auctionIndex = event.isV9110 ? event.asV9110 : event.asV9230.auctionIndex;
                     const auction = auctions.find(a => a.id == auctionIndex.toString())!;
                     auction.status = "Completed";
                     auction.timestamp!.end = BigInt(block.header.timestamp);
